@@ -1,0 +1,60 @@
+/* Responsive Utilities */
+
+/* Mobile First - Ocultar texto en mobile, mostrar solo iconos */
+@media (max-width: 640px) {
+  .mobile-icon-only span {
+    display: none;
+  }
+  
+  .mobile-icon-only {
+    padding: 0.5rem !important;
+  }
+
+  /* Ajustar modales en mobile */
+  .modal-mobile {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+
+  /* Botones más pequeños en mobile */
+  .btn-group-mobile {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Grid responsive */
+  .grid-mobile-1 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-compact {
+    padding: 1rem;
+  }
+}
+
+/* Landscape mobile */
+@media (max-width: 896px) and (orientation: landscape) {
+  .landscape-compact {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .landscape-compact h1 {
+    font-size: 1.5rem;
+  }
+
+  .landscape-compact .card {
+    padding: 0.75rem;
+  }
+}
+
+/* Touch targets - mínimo 44x44px para mobile */
+@media (max-width: 768px) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

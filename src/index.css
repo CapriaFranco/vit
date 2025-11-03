@@ -1,0 +1,259 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-800;
+  }
+  body {
+    @apply bg-ultra-dark text-text-primary;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-accent to-accent-hover hover:from-accent-hover hover:to-accent text-white px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 font-medium shadow-lg hover:shadow-accent/25 hover:scale-105 transform text-sm sm:text-base;
+  }
+  
+  .btn-secondary {
+    @apply bg-medium-gray hover:bg-light-gray text-text-primary px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 font-medium border border-light-gray hover:border-accent hover:shadow-lg hover:scale-105 transform text-sm sm:text-base;
+  }
+  
+  .card {
+    @apply bg-dark-gray border border-medium-gray rounded-xl p-3 sm:p-4 lg:p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:border-accent/30;
+  }
+  
+  .input {
+    @apply bg-medium-gray border border-light-gray rounded-lg px-3 py-2 text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all duration-200 hover:border-accent/50 text-sm sm:text-base;
+  }
+
+  .epic-gradient {
+    @apply bg-gradient-to-br from-ultra-dark via-dark-gray to-medium-gray;
+  }
+
+  .glow-effect {
+    @apply relative;
+  }
+
+  .glow-effect::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-accent/20 to-accent-hover/20 rounded-xl blur-xl opacity-0 transition-opacity duration-300;
+  }
+
+  .glow-effect:hover::before {
+    @apply opacity-100;
+  }
+
+  .tournament-card {
+    @apply card glow-effect backdrop-blur-sm bg-dark-gray/80 border-gradient;
+  }
+
+  .border-gradient {
+    @apply relative;
+  }
+
+  .border-gradient::before {
+    content: '';
+    @apply absolute inset-0 rounded-xl p-[1px] bg-gradient-to-r from-accent/30 via-accent-hover/30 to-accent/30;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+}
+
+/* Animaciones épicas */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Estilos para react-tournament-bracket */
+.tournament-bracket-container {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 20px 0;
+  position: relative;
+}
+
+/* Scrollbar personalizado */
+.tournament-bracket-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tournament-bracket-container::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.tournament-bracket-container::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 4px;
+}
+
+.tournament-bracket-container::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+/* Contenedor principal del bracket */
+.tournament-bracket-wrapper > div {
+  display: flex;
+  flex-direction: row;
+  gap: 60px;
+  min-width: max-content;
+  padding: 0 20px;
+}
+
+/* Cada ronda */
+.tournament-bracket-wrapper > div > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  min-width: 300px;
+  position: relative;
+}
+
+/* Título de la ronda */
+.tournament-bracket-wrapper h3 {
+  text-align: center;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-bottom: 24px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 0;
+  border-bottom: 2px solid #3b82f6;
+}
+
+/* Cada seed/partido */
+.tournament-bracket-wrapper article {
+  margin: 16px 0;
+  position: relative;
+}
+
+/* Líneas conectoras SVG */
+.tournament-bracket-wrapper svg {
+  overflow: visible;
+  position: absolute;
+}
+
+.tournament-bracket-wrapper svg path {
+  stroke: #3b82f6;
+  stroke-width: 2;
+  fill: none;
+  transition: all 0.3s ease;
+}
+
+.tournament-bracket-wrapper svg path:hover {
+  stroke: #2563eb;
+  stroke-width: 3;
+}
+
+.tournament-bracket-wrapper svg line {
+  stroke: #3b82f6;
+  stroke-width: 2;
+  transition: all 0.3s ease;
+}
+
+.tournament-bracket-wrapper svg line:hover {
+  stroke: #2563eb;
+  stroke-width: 3;
+}
+
+/* Círculos en las conexiones */
+.tournament-bracket-wrapper svg circle {
+  fill: #3b82f6;
+  transition: all 0.3s ease;
+}
+
+.tournament-bracket-wrapper svg circle:hover {
+  fill: #2563eb;
+  r: 5;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .tournament-bracket-container {
+    padding: 10px 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .tournament-bracket-wrapper > div {
+    gap: 30px;
+  }
+  
+  .tournament-bracket-wrapper > div > div {
+    min-width: 240px;
+  }
+
+  .card {
+    @apply rounded-lg;
+  }
+}
+
+@media (max-width: 640px) {
+  .tournament-bracket-wrapper > div {
+    gap: 20px;
+  }
+  
+  .tournament-bracket-wrapper > div > div {
+    min-width: 200px;
+  }
+
+  .tournament-bracket-wrapper h3 {
+    font-size: 11px;
+    margin-bottom: 16px;
+  }
+}
+
+/* Animación de entrada */
+@keyframes slideInBracket {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.tournament-bracket-wrapper > div > div {
+  animation: slideInBracket 0.5s ease-out forwards;
+}
+
+.tournament-bracket-wrapper > div > div:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.tournament-bracket-wrapper > div > div:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.tournament-bracket-wrapper > div > div:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.tournament-bracket-wrapper > div > div:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+.tournament-bracket-wrapper > div > div:nth-child(5) {
+  animation-delay: 0.4s;
+}
