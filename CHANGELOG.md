@@ -109,6 +109,25 @@ Primera versión funcional del Sistema de Gestión de Torneo de Voley VIT 2025.
 
 ---
 
+## [0.2.0] - 2025-11-04
+
+### 🛠️ Mejoras y correcciones
+
+- Se movió la UI del selector de ciclo fuera del componente `TournamentBracket` hacia las páginas:
+  - `src/pages/Home.jsx` (debajo de "Sistema de Eliminación Directa")
+  - `src/pages/admin/Llaves.jsx` (debajo de "Administra los resultados y avance de los torneos")
+- Zoom general: el control de zoom ahora se comparte en la página para que al cambiar entre Ciclo Básico y Ciclo Superior el nivel de zoom se mantenga.
+- Correcciones visuales y de render:
+  - Manejo mejorado de partidos BYE (pase automático) y visualización de scores.
+  - Se resolvieron errores de JSX y cierres de etiquetas en `TournamentBracket.jsx`.
+  - Simplificación de responsabilidades: el componente solo renderiza los matches que recibe como prop.
+
+### 🧩 Notas técnicas
+
+- Archivos temporales creados durante desarrollo ahora están ignorados por git (`*.new`, `*.test`, `*.temp`).
+- Versión del proyecto: v0.2.0
+
+
 ## Formato de Versiones
 
 - **MAJOR**: Cambios incompatibles en la API

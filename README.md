@@ -2,7 +2,7 @@
 
 > Sistema de gestión de torneos con eliminación directa para el Torneo de Voley Interno 2025 del VIT
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](CHANGELOG.md)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Backend-3ecf8e.svg)](https://supabase.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -16,6 +16,13 @@ Una aplicación web moderna y elegante para gestionar torneos de voley con siste
 - **Eliminación Directa**: Sistema de brackets con avance automático
 - **Formatos Flexibles**: Diferentes configuraciones de sets según ciclo y ronda
 - **Visualización en Tiempo Real**: Actualización instantánea de resultados
+
+## Nota de la versión 0.2.0
+
+- Movido: el selector de ciclo (Básico / Superior) ahora vive en las páginas (Home y Admin) en lugar de dentro del componente de llaves.
+- Zoom compartido: el control de zoom se mantiene al cambiar de ciclo.
+- Correcciones: mejoras en el manejo de BYE, renderizado de scores y balance de JSX.
+
 
 ### 👥 Gestión de Equipos
 - **CRUD Completo**: Crear, editar y eliminar equipos

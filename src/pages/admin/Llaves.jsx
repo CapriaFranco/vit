@@ -7,6 +7,8 @@ import TournamentBracket from '../../components/TournamentBracket'
 const Llaves = () => {
   const [matches, setMatches] = useState({ basico: [], superior: [] })
   const [loading, setLoading] = useState(true)
+  const [selectedCycle, setSelectedCycle] = useState('basico')
+  const [zoomLevel, setZoomLevel] = useState(0.9)
   const [editingMatch, setEditingMatch] = useState(null)
   const [scoreForm, setScoreForm] = useState({
     team1_sets: 0,
@@ -20,6 +22,12 @@ const Llaves = () => {
   useEffect(() => {
     fetchMatches()
   }, [])
+
+  const processAutomaticByes = async () => {
+    // Esta función ya no se usa automáticamente al cargar
+    // Los BYEs se procesan cuando se completa un match
+    return
+  }
 
   const fetchMatches = async () => {
     try {
@@ -58,9 +66,15 @@ const Llaves = () => {
   const generateAllRounds = (matches, cycle) => {
     if (matches.length === 0) return []
 
+    // Agrupar matches por ronda
+    const matchesByRound = matches.reduce((acc, match) => {
+      if (!acc[match.round]) acc[match.round] = []
+      acc[match.round].push(match)
+      return acc
+    }, {})
+
     // Ordenar matches de la primera ronda por ID
-    const firstRoundMatches = [...matches]
-      .filter(m => m.round === 1)
+    const firstRoundMatches = [...(matchesByRound[1] || [])]
       .sort((a, b) => a.id - b.id)
     
     if (firstRoundMatches.length === 0) return matches
@@ -68,13 +82,26 @@ const Llaves = () => {
     // Estructura para almacenar todos los partidos con su posición en el bracket
     const bracketStructure = []
     
-    // Agregar primera ronda con índices de posición
+    // Agregar primera ronda con índices de posición y manejar BYEs automáticamente
     firstRoundMatches.forEach((match, index) => {
-      bracketStructure.push({
+      let processedMatch = {
         ...match,
         bracketPosition: index,
         round: 1
-      })
+      }
+      
+      // Si el match no tiene team2 o es BYE, automáticamente el team1 gana
+      if (!match.team2 || match.is_bye || !match.team2_id) {
+        processedMatch = {
+          ...processedMatch,
+          is_bye: true,
+          winner_id: match.team1_id,
+          team1_sets: 1,
+          team2_sets: 0
+        }
+      }
+      
+      bracketStructure.push(processedMatch)
     })
 
     // Calcular cuántas rondas necesitamos
@@ -90,6 +117,9 @@ const Llaves = () => {
       const previousRoundMatches = bracketStructure.filter(m => m.round === round - 1)
       const matchesInThisRound = Math.ceil(previousRoundMatches.length / 2)
       
+      // Obtener matches reales de esta ronda si existen
+      const realMatchesThisRound = (matchesByRound[round] || []).sort((a, b) => a.id - b.id)
+      
       for (let i = 0; i < matchesInThisRound; i++) {
         const match1Index = i * 2
         const match2Index = i * 2 + 1
@@ -97,10 +127,20 @@ const Llaves = () => {
         const match1 = previousRoundMatches[match1Index]
         const match2 = previousRoundMatches[match2Index]
         
+        // Verificar si existe un match real para esta posición
+        const realMatch = realMatchesThisRound[i]
+        
         let newMatch
         
-        if (match2) {
-          // Partido normal con dos ganadores previos
+        if (realMatch) {
+          // Usar el match real de la base de datos
+          newMatch = {
+            ...realMatch,
+            bracketPosition: i,
+            round
+          }
+        } else if (match2) {
+          // Partido normal con dos ganadores previos (generado)
           const team1 = match1.winner_id 
             ? (match1.winner_id === match1.team1_id ? match1.team1 : match1.team2)
             : null
@@ -123,7 +163,7 @@ const Llaves = () => {
             sourceMatches: [match1.id, match2.id]
           }
         } else {
-          // Pase automático (BYE)
+          // Pase automático (BYE) (generado)
           const team1 = match1.winner_id 
             ? (match1.winner_id === match1.team1_id ? match1.team1 : match1.team2)
             : null
@@ -172,6 +212,13 @@ const Llaves = () => {
   const handleSaveScore = async () => {
     if (!editingMatch) return
 
+    // Verificar que sea un match real de la base de datos
+    if (typeof editingMatch.id === 'string') {
+      alert('Este partido aún no está disponible. Complete los partidos anteriores primero.')
+      return
+    }
+
+    setLoading(true)
     try {
       // Calcular sets ganados
       const team1_sets = scoreForm.sets.filter(set => set.team1 > set.team2).length
@@ -208,36 +255,189 @@ const Llaves = () => {
       // Actualizar siguiente ronda si es necesario
       if (winner_id) {
         await updateNextRound(editingMatch, winner_id)
+        // Refrescar después de actualizar la siguiente ronda
+        await fetchMatches()
+      } else {
+        await fetchMatches()
       }
-
-      await fetchMatches()
       setEditingMatch(null)
       setScoreForm({ team1_sets: 0, team2_sets: 0, score_detail: '', sets: [] })
     } catch (error) {
       console.error('Error saving score:', error)
       alert('Error al guardar el resultado')
+    } finally {
+      setLoading(false)
     }
   }
 
   const updateNextRound = async (currentMatch, winnerId) => {
-    // Lógica para avanzar al ganador a la siguiente ronda
-    const nextRound = currentMatch.round + 1
-    
-    // Buscar si existe un partido en la siguiente ronda que necesite este ganador
-    const { data: nextMatches, error } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('cycle', currentMatch.cycle)
-      .eq('round', nextRound)
+    try {
+      const nextRound = currentMatch.round + 1
+      
+      // Obtener todos los matches de la ronda actual para determinar el pairing
+      const { data: currentRoundMatches, error: currentError } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('cycle', currentMatch.cycle)
+        .eq('round', currentMatch.round)
+        .order('id')
 
-    if (error) {
-      console.error('Error finding next round matches:', error)
-      return
+      if (currentError) {
+        console.error('Error fetching current round matches:', currentError)
+        return
+      }
+
+      // Encontrar el índice del match actual
+      const currentMatchIndex = currentRoundMatches.findIndex(m => m.id === currentMatch.id)
+      if (currentMatchIndex === -1) return
+
+      // Determinar cuál será el match de la siguiente ronda
+      const nextMatchIndex = Math.floor(currentMatchIndex / 2)
+      const isFirstTeamInPair = currentMatchIndex % 2 === 0
+
+      // Buscar si ya existe un match en la siguiente ronda
+      const { data: existingNextMatches, error: nextError } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('cycle', currentMatch.cycle)
+        .eq('round', nextRound)
+        .order('id')
+
+      if (nextError) {
+        console.error('Error fetching next round matches:', nextError)
+        return
+      }
+
+      // Determinar el otro match del par
+      const pairMatchIndex = isFirstTeamInPair ? currentMatchIndex + 1 : currentMatchIndex - 1
+      const pairMatch = currentRoundMatches[pairMatchIndex]
+
+      // Verificar si ya existe un match en la siguiente ronda para esta posición
+      const existingMatch = existingNextMatches[nextMatchIndex]
+
+      if (pairMatch && pairMatch.winner_id) {
+        // Ambos matches del par están completos, crear o actualizar match normal
+        const nextMatchData = {
+          cycle: currentMatch.cycle,
+          round: nextRound,
+          is_bye: false,
+          team1_id: isFirstTeamInPair ? winnerId : pairMatch.winner_id,
+          team2_id: isFirstTeamInPair ? pairMatch.winner_id : winnerId
+        }
+        
+        let createdOrUpdatedMatch
+        
+        if (existingMatch) {
+          // Actualizar match existente
+          const { data, error: updateError } = await supabase
+            .from('matches')
+            .update(nextMatchData)
+            .eq('id', existingMatch.id)
+            .select()
+            .single()
+          
+          if (updateError) {
+            console.error('Error updating match:', updateError)
+          } else {
+            createdOrUpdatedMatch = data
+          }
+        } else {
+          // Crear nuevo match
+          const { data, error: insertError } = await supabase
+            .from('matches')
+            .insert([nextMatchData])
+            .select()
+            .single()
+          
+          if (insertError) {
+            console.error('Error inserting match:', insertError)
+          } else {
+            createdOrUpdatedMatch = data
+          }
+        }
+      } else if (!pairMatch) {
+        // No hay match par (número impar de equipos), crear BYE
+        const nextMatchData = {
+          cycle: currentMatch.cycle,
+          round: nextRound,
+          is_bye: true,
+          team1_id: winnerId,
+          team2_id: null,
+          winner_id: winnerId,
+          team1_sets: 1,
+          team2_sets: 0,
+          completed_at: new Date().toISOString() // Importante: marcar como completado
+        }
+        
+        console.log('Creating BYE match:', nextMatchData)
+        
+        let createdOrUpdatedMatch
+        
+        if (existingMatch) {
+          // Actualizar match existente
+          const { data, error: updateError } = await supabase
+            .from('matches')
+            .update(nextMatchData)
+            .eq('id', existingMatch.id)
+            .select()
+            .single()
+          
+          if (updateError) {
+            console.error('Error updating BYE match:', updateError, nextMatchData)
+          } else {
+            createdOrUpdatedMatch = data
+          }
+        } else {
+          // Crear nuevo match
+          const { data, error: insertError } = await supabase
+            .from('matches')
+            .insert([nextMatchData])
+            .select()
+            .single()
+          
+          if (insertError) {
+            console.error('Error inserting BYE match:', insertError, nextMatchData)
+          } else {
+            createdOrUpdatedMatch = data
+          }
+        }
+        
+        // Si se creó un BYE, procesarlo recursivamente para la siguiente ronda
+        // pero sólo hasta la ronda máxima real del torneo, calculada a
+        // partir de los partidos de la primera ronda (evita usar valores
+        // residuales en la DB como rounds muy grandes de ejecuciones previas).
+        const { data: firstRoundMatches = [], error: frError } = await supabase
+          .from('matches')
+          .select('*')
+          .eq('cycle', currentMatch.cycle)
+          .eq('round', 1)
+          .order('id')
+
+        if (frError) {
+          console.error('Error fetching first round matches for maxRounds:', frError)
+        }
+
+        // Calcular número total de equipos a partir de la primera ronda
+        const totalTeams = (firstRoundMatches || []).reduce((sum, m) => {
+          if (m.is_bye) return sum + 1
+          return sum + 2
+        }, 0)
+
+        const maxRounds = totalTeams > 0 ? Math.ceil(Math.log2(totalTeams)) : nextRound
+
+        // Sólo recursar si el match creado está por debajo de la ronda final real
+        if (createdOrUpdatedMatch &&
+            createdOrUpdatedMatch.is_bye &&
+            createdOrUpdatedMatch.winner_id &&
+            createdOrUpdatedMatch.round < maxRounds) {
+          await updateNextRound(createdOrUpdatedMatch, createdOrUpdatedMatch.winner_id)
+        }
+      }
+      // Si el match par no está completo, no hacemos nada (esperamos a que se complete)
+
+    } catch (error) {
+      console.error('Error updating next round:', error)
     }
-
-    // Aquí implementarías la lógica específica para avanzar equipos
-    // Por simplicidad, esto requeriría una lógica más compleja para manejar
-    // la estructura del torneo de eliminación
   }
 
   const getMatchStatus = (match) => {
@@ -298,6 +498,8 @@ const Llaves = () => {
               cycle={cycle}
               onEditMatch={handleEditScore}
               finalFormat={finalFormat}
+              zoomLevel={zoomLevel}
+              setZoomLevel={setZoomLevel}
             />
           </div>
         )}
@@ -322,17 +524,41 @@ const Llaves = () => {
           Administra los resultados y avance de los torneos
         </p>
 
+        {/* Selector de ciclo: mover control fuera del componente de llaves */}
+        <div className="flex justify-center gap-4">
+          <button
+            className={`px-5 py-2 rounded-lg font-medium transition-all ${
+              selectedCycle === 'basico' ? 'bg-accent text-white' : 'bg-light-gray/10 text-text-secondary hover:bg-light-gray/20'
+            }`}
+            onClick={() => setSelectedCycle('basico')}
+          >
+            Ciclo Básico
+          </button>
+          <button
+            className={`px-5 py-2 rounded-lg font-medium transition-all ${
+              selectedCycle === 'superior' ? 'bg-accent text-white' : 'bg-light-gray/10 text-text-secondary hover:bg-light-gray/20'
+            }`}
+            onClick={() => setSelectedCycle('superior')}
+          >
+            Ciclo Superior
+          </button>
+        </div>
+
         <div className="space-y-8">
-          <BracketView 
-            bracket={matches.basico} 
-            title="Ciclo Básico" 
-            cycle="basico"
-          />
-          <BracketView 
-            bracket={matches.superior} 
-            title="Ciclo Superior" 
-            cycle="superior"
-          />
+          <div className={selectedCycle === 'basico' ? 'block' : 'hidden'}>
+            <BracketView 
+              bracket={matches.basico} 
+              title="Ciclo Básico" 
+              cycle="basico"
+            />
+          </div>
+          <div className={selectedCycle === 'superior' ? 'block' : 'hidden'}>
+            <BracketView 
+              bracket={matches.superior} 
+              title="Ciclo Superior" 
+              cycle="superior"
+            />
+          </div>
         </div>
 
         {/* Modal para editar resultado */}

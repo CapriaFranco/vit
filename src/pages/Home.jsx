@@ -7,6 +7,8 @@ import logoTransparent from '../assets/img/vit-logo-transparent.png'
 const Home = () => {
   const [matches, setMatches] = useState({ basico: [], superior: [] })
   const [loading, setLoading] = useState(true)
+  const [selectedCycle, setSelectedCycle] = useState('basico')
+  const [zoomLevel, setZoomLevel] = useState(0.9)
 
   useEffect(() => {
     fetchMatches()
@@ -49,9 +51,15 @@ const Home = () => {
   const generateAllRounds = (matches, cycle) => {
     if (matches.length === 0) return []
 
+    // Agrupar matches por ronda
+    const matchesByRound = matches.reduce((acc, match) => {
+      if (!acc[match.round]) acc[match.round] = []
+      acc[match.round].push(match)
+      return acc
+    }, {})
+
     // Ordenar matches de la primera ronda por ID
-    const firstRoundMatches = [...matches]
-      .filter(m => m.round === 1)
+    const firstRoundMatches = [...(matchesByRound[1] || [])]
       .sort((a, b) => a.id - b.id)
     
     if (firstRoundMatches.length === 0) return matches
@@ -59,13 +67,26 @@ const Home = () => {
     // Estructura para almacenar todos los partidos con su posición en el bracket
     const bracketStructure = []
     
-    // Agregar primera ronda con índices de posición
+    // Agregar primera ronda con índices de posición y manejar BYEs automáticamente
     firstRoundMatches.forEach((match, index) => {
-      bracketStructure.push({
+      let processedMatch = {
         ...match,
         bracketPosition: index,
         round: 1
-      })
+      }
+      
+      // Si el match no tiene team2 o es BYE, automáticamente el team1 gana
+      if (!match.team2 || match.is_bye || !match.team2_id) {
+        processedMatch = {
+          ...processedMatch,
+          is_bye: true,
+          winner_id: match.team1_id,
+          team1_sets: 1,
+          team2_sets: 0
+        }
+      }
+      
+      bracketStructure.push(processedMatch)
     })
 
     // Calcular cuántas rondas necesitamos
@@ -81,6 +102,9 @@ const Home = () => {
       const previousRoundMatches = bracketStructure.filter(m => m.round === round - 1)
       const matchesInThisRound = Math.ceil(previousRoundMatches.length / 2)
       
+      // Obtener matches reales de esta ronda si existen
+      const realMatchesThisRound = (matchesByRound[round] || []).sort((a, b) => a.id - b.id)
+      
       for (let i = 0; i < matchesInThisRound; i++) {
         const match1Index = i * 2
         const match2Index = i * 2 + 1
@@ -88,10 +112,20 @@ const Home = () => {
         const match1 = previousRoundMatches[match1Index]
         const match2 = previousRoundMatches[match2Index]
         
+        // Verificar si existe un match real para esta posición
+        const realMatch = realMatchesThisRound[i]
+        
         let newMatch
         
-        if (match2) {
-          // Partido normal con dos ganadores previos
+        if (realMatch) {
+          // Usar el match real de la base de datos
+          newMatch = {
+            ...realMatch,
+            bracketPosition: i,
+            round
+          }
+        } else if (match2) {
+          // Partido normal con dos ganadores previos (generado)
           const team1 = match1.winner_id 
             ? (match1.winner_id === match1.team1_id ? match1.team1 : match1.team2)
             : null
@@ -114,7 +148,7 @@ const Home = () => {
             sourceMatches: [match1.id, match2.id]
           }
         } else {
-          // Pase automático (BYE)
+          // Pase automático (BYE) (generado)
           const team1 = match1.winner_id 
             ? (match1.winner_id === match1.team1_id ? match1.team1 : match1.team2)
             : null
@@ -164,6 +198,8 @@ const Home = () => {
               cycle={cycle}
               onEditMatch={null}
               finalFormat={{ basico: 3, superior: 5 }}
+              zoomLevel={zoomLevel}
+              setZoomLevel={setZoomLevel}
             />
           </div>
         )}
@@ -196,16 +232,40 @@ const Home = () => {
         </div>
 
         <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-          <BracketView 
-            bracket={matches.basico} 
-            title="Ciclo Básico" 
-            cycle="basico"
-          />
-          <BracketView 
-            bracket={matches.superior} 
-            title="Ciclo Superior" 
-            cycle="superior"
-          />
+          {/* Selector de ciclo (fuera del componente) */}
+          <div className="flex justify-center gap-4">
+            <button
+              className={`px-5 py-2 rounded-lg font-medium transition-all ${
+                selectedCycle === 'basico' ? 'bg-accent text-white' : 'bg-light-gray/10 text-text-secondary hover:bg-light-gray/20'
+              }`}
+              onClick={() => setSelectedCycle('basico')}
+            >
+              Ciclo Básico
+            </button>
+            <button
+              className={`px-5 py-2 rounded-lg font-medium transition-all ${
+                selectedCycle === 'superior' ? 'bg-accent text-white' : 'bg-light-gray/10 text-text-secondary hover:bg-light-gray/20'
+              }`}
+              onClick={() => setSelectedCycle('superior')}
+            >
+              Ciclo Superior
+            </button>
+          </div>
+
+          <div className={selectedCycle === 'basico' ? 'block' : 'hidden'}>
+            <BracketView 
+              bracket={matches.basico} 
+              title="Ciclo Básico" 
+              cycle="basico"
+            />
+          </div>
+          <div className={selectedCycle === 'superior' ? 'block' : 'hidden'}>
+            <BracketView 
+              bracket={matches.superior} 
+              title="Ciclo Superior" 
+              cycle="superior"
+            />
+          </div>
         </div>
       </div>
     </div>

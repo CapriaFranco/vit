@@ -38,3 +38,8 @@ src/assets/docs/*
 src/assets/db/import.json
 src/assets/db/password.sql
 src/assets/db/test_data.sql
+
+# Ignorar archivos temporales/creados durante ediciones
+*.new
+*.test
+*.temp
